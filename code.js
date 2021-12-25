@@ -24,6 +24,7 @@ var index = 1;
 var delay = 0;
 var startTime = Math.floor(Date.now());
 var tappingLog = [];
+var delayLog = [];
 
 function resetValues() {
   index = 1;
@@ -32,13 +33,22 @@ function resetValues() {
   tappingLog = [];
 }
 
+function finalizeLogs() {
+  delayLog = [];
+  for (var i = 0; i < tappingLog.length; i++) {
+    delayLog.push(tappingLog[i] - hitObjStarts[i]);
+  }
+  console.log(tappingLog);
+  console.log(delayLog);
+}
+
 function recursiveSetTimeout() {
   if (!isOn) {
     return;
   }
 
   if (index >= hitObjStarts.length) {
-    console.log(tappingLog);
+    finalizeLogs();
     return;
   }
 
@@ -83,7 +93,7 @@ function stopPlaying() {
   timeouts.forEach(t => clearTimeout(t));
   timeouts = [];
   P4.write(false);
-  console.log(tappingLog);
+  finalizeLogs();
 }
 
 function toggleSong(isOn) {
