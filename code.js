@@ -1,89 +1,99 @@
-let tapLength = 50;
-let hitObjBufSize = 100;
-let filename = "Made_of_Fire";
-
-require("Storage").list();
+let tapLength = 15;
+let filename = "Harumachi_Clover";
 
 var dataStr = require("Storage").read(filename);
-var hitObjStarts = [];
-var hitObjLengths = [];
-var temp = "";
-var commaCount = 0;
-var dataIndex = 0;
-function fillBuffer() {
-  while (hitObjStarts.length <= hitObjBufSize && dataIndex < dataStr.length) {
-    let char = dataStr[dataIndex++];
-    if (char == ",") {
-      if (commaCount % 2 == 0) {
-        hitObjStarts.push(Number(temp));
-      } else {
-        hitObjLengths.push(Number(temp));
-      }
-      temp = "";
-      commaCount += 1;
-      continue;
+
+var hitObjStarts = [0];
+var hitObjLengths = [0];
+
+function fillObjects() {
+  let timings = dataStr.split(",");
+  for (var i = 0; i < timings.length; i++) {
+    if (i % 2 == 0) {
+      hitObjStarts.push(Number(timings[i]));
+    } else {
+      hitObjLengths.push(Number(timings[i]));
     }
-    temp += char;
   }
+  console.log(process.memory().free);
+}
+
+var isOn = false;
+var timeouts = [];
+var index = 1;
+var delay = 0;
+var startTime = Math.floor(Date.now());
+var tappingLog = [];
+var delayLog = [];
+
+function resetValues() {
+  index = 1;
+  delay = 0;
+  startTime = Math.floor(Date.now());
+  tappingLog = [];
+}
+
+function finalizeLogs() {
+  delayLog = [];
+  for (var i = 0; i < tappingLog.length; i++) {
+    delayLog.push(tappingLog[i] - hitObjStarts[i]);
+  }
+  console.log(tappingLog);
+  console.log(delayLog);
+}
+
+function recursiveSetTimeout() {
+  if (!isOn) {
+    return;
+  }
+
+  if (index >= hitObjStarts.length) {
+    finalizeLogs();
+    return;
+  }
+
+  var relativeStart = hitObjStarts[index] - hitObjStarts[index - 1];
+  /*if (relativeStart <= delay) {
+    relativeStart = 0;
+    delay = 0;
+  }*/
+  timeouts.push(
+    setTimeout(() => {
+      let length = hitObjLengths[index];
+      if (length == 0) {
+        tap();
+      } else {
+        press(length);
+      }
+      index++;
+      recursiveSetTimeout();
+    }, relativeStart)
+  );
 }
 
 function tap() {
+  tappingLog.push(Math.floor(Date.now()) - startTime);
   P4.write(true);
   timeouts.push(setTimeout(() => P4.write(false), tapLength));
 }
 
 function press(ms) {
+  tappingLog.push(Math.floor(Date.now()) - startTime);
   P4.write(true);
   timeouts.push(setTimeout(() => P4.write(false), ms));
 }
 
-var timeouts = [];
-
 function startPlaying() {
-  dataIndex = 0;
-  let startTime = getTime();
-  while (dataIndex < dataStr.length) {
-    hitObjStarts = [];
-    hitObjLengths = [];
-    fillBuffer();
-    let now = getTime();
-    for (var i = 0; i < hitObjStarts.length; i++) {
-        var start = hitObjStarts[i];
-        var length = hitObjLengths[i];
-        var timeout;
-        if (length == 0) {
-          timeout = setTimeout(tap, start - now + startTime);
-          timeouts.push(timeout);
-        } else {
-          timeout = setTimeout(press, start - now + startTime, length);
-          timeouts.push(timeout);
-        }
-    }
-  }
-  hitObjStarts = [];
-  hitObjLengths = [];
-  /*
-    hitObjects.forEach(hitObject => {
-      var start = hitObject.start;
-      var length = hitObject.length;
-      var timeout;
-      if (length == 0) {
-        timeout = setTimeout(tap, start);
-        timeouts.push(timeout);
-      } else {
-        timeout = setTimeout(press, start, length);
-        timeouts.push(timeout);
-      }
-    });
-    */
+  resetValues();
+  tap();
+  recursiveSetTimeout();
 }
 
 function stopPlaying() {
   timeouts.forEach(t => clearTimeout(t));
   timeouts = [];
-  hitObjStarts = [];
-  hitObjLengths = [];
-  console.log(process.memory().free);
+  P4.write(false);
+  finalizeLogs();
 }
 
 function toggleSong(isOn) {
@@ -99,10 +109,10 @@ var myButton = require('@amperka/button')
     holdTime: 1.5
   });
 
-var isOn = false;
-
 myButton.on('click', function() {
   isOn = !isOn;
   LED1.write(isOn);
   toggleSong(isOn);
 });
+
+fillObjects();
