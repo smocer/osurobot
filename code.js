@@ -1,6 +1,7 @@
-let tapLength = 30;
-let mapLoadingDelay = 43;
-let filename = "Harumachi_Clover";
+let tapLength = 35;
+let filename = "Tower_Of_Heaven";
+let solenoidError = 0;
+let mapLoadingDelay = 1040;
 
 var dataStr = require("Storage").read(filename);
 
@@ -11,7 +12,7 @@ function fillHitObjects() {
   let timings = dataStr.split(",");
   for (var i = 0; i < timings.length; i++) {
     if (i % 2 == 0) {
-      hitObjStarts.push(Number(timings[i]) + mapLoadingDelay);
+      hitObjStarts.push(Number(timings[i]) + mapLoadingDelay - solenoidError);
     } else {
       hitObjLengths.push(Number(timings[i]));
     }
@@ -27,21 +28,29 @@ var startTime = Math.floor(Date.now());
 var tappingLog = [];
 var pressingLog = [];
 var delayLog = [];
+var pressingErrorLog = [];
 
 function resetValues() {
   index = 1;
   delay = 0;
   startTime = Math.floor(Date.now());
   tappingLog = [];
+  pressingLog = [];
 }
 
 function finalizeLogs() {
   delayLog = [];
+  pressingErrorLog = [];
   for (var i = 0; i < tappingLog.length; i++) {
     delayLog.push(tappingLog[i] - hitObjStarts[i]);
   }
-  console.log(tappingLog);
-  console.log(delayLog);
+  for (var j = 0; j < pressingLog.length; j++) {
+    pressingErrorLog.push(pressingLog[j] - hitObjLengths[j]);
+  }
+  console.log("tappingLog:", tappingLog);
+  console.log("delayLog:", delayLog);
+  console.log("pressingLog:", pressingLog);
+  console.log("pressingErrorLog:", pressingErrorLog);
 }
 
 function recursiveSetTimeout() {
@@ -79,14 +88,16 @@ function recursiveSetTimeout() {
 
 function tap() {
   tappingLog.push(Math.floor(Date.now()) - startTime);
+  let start = Math.floor(Date.now());
   P4.write(true);
-  timeouts.push(setTimeout(() => P4.write(false), tapLength));
+  timeouts.push(setTimeout(() => { P4.write(false); pressingLog.push(Math.floor(Date.now()) - start); }, tapLength));
 }
 
 function press(ms) {
   tappingLog.push(Math.floor(Date.now()) - startTime);
+  let start = Math.floor(Date.now());
   P4.write(true);
-  timeouts.push(setTimeout(() => P4.write(false), ms));
+  timeouts.push(setTimeout(() => { P4.write(false); pressingLog.push(Math.floor(Date.now()) - start); }, ms));
 }
 
 function startPlaying() {
