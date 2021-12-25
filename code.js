@@ -1,5 +1,5 @@
-let tapLength = 35;
-let filename = "Tower_Of_Heaven";
+let tapLength = 40;
+let filename = "Metrei";
 let solenoidError = 0;
 let mapLoadingDelay = 1040;
 
@@ -97,7 +97,7 @@ function press(ms) {
   tappingLog.push(Math.floor(Date.now()) - startTime);
   let start = Math.floor(Date.now());
   P4.write(true);
-  timeouts.push(setTimeout(() => { P4.write(false); pressingLog.push(Math.floor(Date.now()) - start); }, ms));
+  timeouts.push(setTimeout(() => { P4.write(false); pressingLog.push(Math.floor(Date.now()) - start); }, ms - 10));
 }
 
 function startPlaying() {
