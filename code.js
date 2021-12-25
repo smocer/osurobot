@@ -1,29 +1,19 @@
-let tapLength = 50;
-let hitObjBufSize = 100;
-let filename = "Made_of_Fire";
-
-require("Storage").list();
+let tapLength = 20;
+let filename = "Inferno";
 
 var dataStr = require("Storage").read(filename);
+
 var hitObjStarts = [];
 var hitObjLengths = [];
-var temp = "";
-var commaCount = 0;
-var dataIndex = 0;
-function fillBuffer() {
-  while (hitObjStarts.length <= hitObjBufSize && dataIndex < dataStr.length) {
-    let char = dataStr[dataIndex++];
-    if (char == ",") {
-      if (commaCount % 2 == 0) {
-        hitObjStarts.push(Number(temp));
-      } else {
-        hitObjLengths.push(Number(temp));
-      }
-      temp = "";
-      commaCount += 1;
-      continue;
+
+function fillObjects() {
+  let timings = dataStr.split(",");
+  for (var i = 0; i < timings.count; i++) {
+    if (i % 2 == 0) {
+      hitObjStarts.push(Number(timings[i]));
+    } else {
+      hitObjLengths.push(Number(timings[i]));
     }
-    temp += char;
   }
 }
 
@@ -40,32 +30,9 @@ function press(ms) {
 var timeouts = [];
 
 function startPlaying() {
-  dataIndex = 0;
-  let startTime = getTime();
-  while (dataIndex < dataStr.length) {
-    hitObjStarts = [];
-    hitObjLengths = [];
-    fillBuffer();
-    let now = getTime();
-    for (var i = 0; i < hitObjStarts.length; i++) {
-        var start = hitObjStarts[i];
-        var length = hitObjLengths[i];
-        var timeout;
-        if (length == 0) {
-          timeout = setTimeout(tap, start - now + startTime);
-          timeouts.push(timeout);
-        } else {
-          timeout = setTimeout(press, start - now + startTime, length);
-          timeouts.push(timeout);
-        }
-    }
-  }
-  hitObjStarts = [];
-  hitObjLengths = [];
-  /*
-    hitObjects.forEach(hitObject => {
-      var start = hitObject.start;
-      var length = hitObject.length;
+  for (var i = 0; i < hitObjStarts.length; i++) {
+      var start = hitObjStarts[i];
+      var length = hitObjLengths[i];
       var timeout;
       if (length == 0) {
         timeout = setTimeout(tap, start);
@@ -74,16 +41,12 @@ function startPlaying() {
         timeout = setTimeout(press, start, length);
         timeouts.push(timeout);
       }
-    });
-    */
+  }
 }
 
 function stopPlaying() {
   timeouts.forEach(t => clearTimeout(t));
   timeouts = [];
-  hitObjStarts = [];
-  hitObjLengths = [];
-  console.log(process.memory().free);
 }
 
 function toggleSong(isOn) {
@@ -106,3 +69,5 @@ myButton.on('click', function() {
   LED1.write(isOn);
   toggleSong(isOn);
 });
+
+fillObjects();
