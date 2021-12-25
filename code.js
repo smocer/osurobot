@@ -1,4 +1,5 @@
-let tapLength = 15;
+let tapLength = 30;
+let mapLoadingDelay = 43;
 let filename = "Harumachi_Clover";
 
 var dataStr = require("Storage").read(filename);
@@ -6,11 +7,11 @@ var dataStr = require("Storage").read(filename);
 var hitObjStarts = [0];
 var hitObjLengths = [0];
 
-function fillObjects() {
+function fillHitObjects() {
   let timings = dataStr.split(",");
   for (var i = 0; i < timings.length; i++) {
     if (i % 2 == 0) {
-      hitObjStarts.push(Number(timings[i]));
+      hitObjStarts.push(Number(timings[i]) + mapLoadingDelay);
     } else {
       hitObjLengths.push(Number(timings[i]));
     }
@@ -24,6 +25,7 @@ var index = 1;
 var delay = 0;
 var startTime = Math.floor(Date.now());
 var tappingLog = [];
+var pressingLog = [];
 var delayLog = [];
 
 function resetValues() {
@@ -53,10 +55,14 @@ function recursiveSetTimeout() {
   }
 
   var relativeStart = hitObjStarts[index] - hitObjStarts[index - 1];
-  /*if (relativeStart <= delay) {
-    relativeStart = 0;
-    delay = 0;
-  }*/
+  var error = 0;
+  if (index > 0) {
+    let prevLength = hitObjLengths[index - 1] == 0 ? tapLength : hitObjLengths[index - 1];
+    let absoluteStart = hitObjStarts[index - 1];
+    let actualStart = Math.floor(Date.now()) - startTime;
+    error = actualStart - absoluteStart;
+  }
+  relativeStart = Math.max(prevLength, relativeStart - error);
   timeouts.push(
     setTimeout(() => {
       let length = hitObjLengths[index];
@@ -115,4 +121,4 @@ myButton.on('click', function() {
   toggleSong(isOn);
 });
 
-fillObjects();
+fillHitObjects();
