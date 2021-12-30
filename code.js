@@ -1,7 +1,6 @@
 let tapLength = 40;
 let filename = "Inferno";
-let solenoidError = 0;
-let mapLoadingDelay = 1040;
+let mapLoadingDelay = 1080;
 
 let speedup = 1;
 let speedupMult = 1 / speedup;
@@ -40,6 +39,7 @@ function resetValues() {
 }
 
 function finalizeLogs() {
+  /*
   delayLog = [];
   pressingErrorLog = [];
   for (var i = 0; i < tappingLog.length; i++) {
@@ -48,10 +48,11 @@ function finalizeLogs() {
   for (var j = 0; j < pressingLog.length; j++) {
     pressingErrorLog.push(pressingLog[j] - hitObjLengths[j]);
   }
+  */
   console.log("tappingLog:", tappingLog);
-  console.log("delayLog:", delayLog);
+  // console.log("delayLog:", delayLog);
   console.log("pressingLog:", pressingLog);
-  console.log("pressingErrorLog:", pressingErrorLog);
+  // console.log("pressingErrorLog:", pressingErrorLog);
 }
 
 function readNextHitObject() {
@@ -68,7 +69,7 @@ function readNextHitObject() {
   }
 
   return new HitObject(
-    Number(readUntilComma()) * speedupMult + mapLoadingDelay - solenoidError,
+    Number(readUntilComma()) * speedupMult + mapLoadingDelay,
     Number(readUntilComma()) * speedupMult
   );
 }
