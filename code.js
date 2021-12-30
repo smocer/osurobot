@@ -1,11 +1,11 @@
 let tapLength = 40;
-let filename = "Inferno";
-let mapLoadingDelay = 1080;
+let filename = "IntoTheVoid";
+let mapLoadingDelay = 1050;
 
 let speedup = 1;
 let speedupMult = 1 / speedup;
 
-let logsEnabled = true;
+let logsEnabled = false;
 
 var dataStr = require("Storage").read(filename);
 
@@ -79,19 +79,13 @@ function recursiveSetTimeout() {
     return;
   }
 
-  if (dataIndex >= dataStr.length) {
-    if (logsEnabled) { finalizeLogs(); }
-    console.log(process.memory());
-    return;
-  }
-
   if (timeouts.length > 200) { timeouts = []; }
 
   var relativeStart = currHitObject.start - prevHitObject.start;
   let prevLength = prevHitObject.length == 0 ? tapLength : prevHitObject.length;
   let absoluteStart = prevHitObject.start;
   let actualStart = Math.floor(Date.now()) - startTime;
-  let error = actualStart - absoluteStart;
+  let error = actualStart - absoluteStart + 2;
   relativeStart = Math.max(prevLength, relativeStart - error);
   timeouts.push(
     setTimeout(() => {
@@ -101,6 +95,13 @@ function recursiveSetTimeout() {
       } else {
         press(length);
       }
+
+      if (dataIndex >= dataStr.length) {
+        if (logsEnabled) { finalizeLogs(); }
+        console.log(process.memory());
+        return;
+      }
+
       prevHitObject = currHitObject;
       currHitObject = readNextHitObject();
       recursiveSetTimeout();
