@@ -1,48 +1,27 @@
-let tapLength = 20;
+let tapLength = 40;
 let filename = "Inferno";
 let solenoidError = 0;
 let mapLoadingDelay = 1040;
 
-let speedup = 1.5;
+let speedup = 1;
 let speedupMult = 1 / speedup;
+
+let logsEnabled = true;
 
 var dataStr = require("Storage").read(filename);
 
-var hitObjStarts = [0];
-var hitObjLengths = [0];
-
-var dataIndex = 0;
-function readNextHitObject() {
-  function readUntilComma() {
-    var temp = "";
-    for (var i = dataIndex; i < dataStr.length; i++) {
-      if (dataStr[i] == ",") {
-        dataIndex = i + 1;
-        return temp;
-      }
-
-      temp += dataStr[i];
-    }
+class HitObject {
+  constructor(start, length) {
+    this.start = start;
+    this.length = length;
   }
-
-  return [readUntilComma(), readUntilComma()];
-}
-
-function fillHitObjects() {
-  let timings = dataStr.split(",");
-  for (var i = 0; i < timings.length; i++) {
-    if (i % 2 == 0) {
-      hitObjStarts.push(Number(timings[i]) * speedupMult + mapLoadingDelay - solenoidError);
-    } else {
-      hitObjLengths.push(Number(timings[i]) * speedupMult);
-    }
-  }
-  console.log(process.memory().free);
 }
 
 var isOn = false;
+var dataIndex = 0;
+var prevHitObject;
+var currHitObject;
 var timeouts = [];
-var index = 1;
 var delay = 0;
 var startTime = Math.floor(Date.now());
 var tappingLog = [];
@@ -51,12 +30,13 @@ var delayLog = [];
 var pressingErrorLog = [];
 
 function resetValues() {
-  dataIndex = 0;
-  index = 1;
   delay = 0;
   startTime = Math.floor(Date.now());
   tappingLog = [];
   pressingLog = [];
+  dataIndex = 0;
+  prevHitObject = readNextHitObject();
+  currHitObject = readNextHitObject();
 }
 
 function finalizeLogs() {
@@ -74,34 +54,54 @@ function finalizeLogs() {
   console.log("pressingErrorLog:", pressingErrorLog);
 }
 
+function readNextHitObject() {
+  function readUntilComma() {
+    var temp = "";
+    for (var i = dataIndex; i < dataStr.length; i++) {
+      if (dataStr[i] == "," || i == dataStr.length - 1) {
+        dataIndex = i + 1;
+        return temp;
+      }
+
+      temp += dataStr[i];
+    }
+  }
+
+  return new HitObject(
+    Number(readUntilComma()) * speedupMult + mapLoadingDelay - solenoidError,
+    Number(readUntilComma()) * speedupMult
+  );
+}
+
 function recursiveSetTimeout() {
   if (!isOn) {
     return;
   }
 
-  if (index >= hitObjStarts.length) {
-    finalizeLogs();
+  if (dataIndex >= dataStr.length) {
+    if (logsEnabled) { finalizeLogs(); }
+    console.log(process.memory());
     return;
   }
 
-  var relativeStart = hitObjStarts[index] - hitObjStarts[index - 1];
-  var error = 0;
-  if (index > 0) {
-    let prevLength = hitObjLengths[index - 1] == 0 ? tapLength : hitObjLengths[index - 1];
-    let absoluteStart = hitObjStarts[index - 1];
-    let actualStart = Math.floor(Date.now()) - startTime;
-    error = actualStart - absoluteStart;
-  }
+  if (timeouts.length > 200) { timeouts = []; }
+
+  var relativeStart = currHitObject.start - prevHitObject.start;
+  let prevLength = prevHitObject.length == 0 ? tapLength : prevHitObject.length;
+  let absoluteStart = prevHitObject.start;
+  let actualStart = Math.floor(Date.now()) - startTime;
+  let error = actualStart - absoluteStart;
   relativeStart = Math.max(prevLength, relativeStart - error);
   timeouts.push(
     setTimeout(() => {
-      let length = hitObjLengths[index];
+      let length = currHitObject.length;
       if (length == 0) {
         tap();
       } else {
         press(length);
       }
-      index++;
+      prevHitObject = currHitObject;
+      currHitObject = readNextHitObject();
       recursiveSetTimeout();
     }, relativeStart)
   );
@@ -115,24 +115,30 @@ function getSignalId() {
 }
 
 function tap() {
-  tappingLog.push(Math.floor(Date.now()) - startTime);
+  if (logsEnabled) { tappingLog.push(Math.floor(Date.now()) - startTime); }
+
   let start = Math.floor(Date.now());
   let signalID = getSignalId();
   sendSignal(true, signalID);
+
   timeouts.push(setTimeout(() => {
     sendSignal(false, signalID);
-    pressingLog.push(Math.floor(Date.now()) - start);
+
+    if (logsEnabled) { pressingLog.push(Math.floor(Date.now()) - start); }
   }, tapLength));
 }
 
 function press(ms) {
-  tappingLog.push(Math.floor(Date.now()) - startTime);
+  if (logsEnabled) { tappingLog.push(Math.floor(Date.now()) - startTime); }
+
   let start = Math.floor(Date.now());
   let signalID = getSignalId();
   sendSignal(true, signalID);
+
   timeouts.push(setTimeout(() => {
     sendSignal(false, signalID);
-    pressingLog.push(Math.floor(Date.now()) - start);
+
+    if (logsEnabled) { pressingLog.push(Math.floor(Date.now()) - start); }
   }, ms - 10));
 }
 
@@ -154,14 +160,17 @@ function stopPlaying() {
   timeouts.forEach(t => clearTimeout(t));
   timeouts = [];
   P4.write(false);
-  finalizeLogs();
+  P7.write(false);
+  if (logsEnabled) { finalizeLogs(); }
 }
 
 function toggleSong(isOn) {
   if (isOn) {
+    console.log(process.memory());
     startPlaying();
   } else {
     stopPlaying();
+    console.log(process.memory());
   }
 }
 
@@ -175,5 +184,3 @@ myButton.on('click', function() {
   LED1.write(isOn);
   toggleSong(isOn);
 });
-
-fillHitObjects();
