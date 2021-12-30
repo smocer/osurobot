@@ -1,20 +1,40 @@
-let tapLength = 40;
-let filename = "Metrei";
+let tapLength = 20;
+let filename = "Inferno";
 let solenoidError = 0;
 let mapLoadingDelay = 1040;
+
+let speedup = 1.5;
+let speedupMult = 1 / speedup;
 
 var dataStr = require("Storage").read(filename);
 
 var hitObjStarts = [0];
 var hitObjLengths = [0];
 
+var dataIndex = 0;
+function readNextHitObject() {
+  function readUntilComma() {
+    var temp = "";
+    for (var i = dataIndex; i < dataStr.length; i++) {
+      if (dataStr[i] == ",") {
+        dataIndex = i + 1;
+        return temp;
+      }
+
+      temp += dataStr[i];
+    }
+  }
+
+  return [readUntilComma(), readUntilComma()];
+}
+
 function fillHitObjects() {
   let timings = dataStr.split(",");
   for (var i = 0; i < timings.length; i++) {
     if (i % 2 == 0) {
-      hitObjStarts.push(Number(timings[i]) + mapLoadingDelay - solenoidError);
+      hitObjStarts.push(Number(timings[i]) * speedupMult + mapLoadingDelay - solenoidError);
     } else {
-      hitObjLengths.push(Number(timings[i]));
+      hitObjLengths.push(Number(timings[i]) * speedupMult);
     }
   }
   console.log(process.memory().free);
@@ -31,6 +51,7 @@ var delayLog = [];
 var pressingErrorLog = [];
 
 function resetValues() {
+  dataIndex = 0;
   index = 1;
   delay = 0;
   startTime = Math.floor(Date.now());
@@ -86,18 +107,41 @@ function recursiveSetTimeout() {
   );
 }
 
+var uniqueID = 0;
+function getSignalId() {
+  let id = uniqueID;
+  uniqueID++;
+  return id;
+}
+
 function tap() {
   tappingLog.push(Math.floor(Date.now()) - startTime);
   let start = Math.floor(Date.now());
-  P4.write(true);
-  timeouts.push(setTimeout(() => { P4.write(false); pressingLog.push(Math.floor(Date.now()) - start); }, tapLength));
+  let signalID = getSignalId();
+  sendSignal(true, signalID);
+  timeouts.push(setTimeout(() => {
+    sendSignal(false, signalID);
+    pressingLog.push(Math.floor(Date.now()) - start);
+  }, tapLength));
 }
 
 function press(ms) {
   tappingLog.push(Math.floor(Date.now()) - startTime);
   let start = Math.floor(Date.now());
-  P4.write(true);
-  timeouts.push(setTimeout(() => { P4.write(false); pressingLog.push(Math.floor(Date.now()) - start); }, ms - 10));
+  let signalID = getSignalId();
+  sendSignal(true, signalID);
+  timeouts.push(setTimeout(() => {
+    sendSignal(false, signalID);
+    pressingLog.push(Math.floor(Date.now()) - start);
+  }, ms - 10));
+}
+
+function sendSignal(value, id) {
+  if (id % 2 == 0) {
+    P4.write(value);
+  } else {
+    P7.write(value);
+  }
 }
 
 function startPlaying() {
