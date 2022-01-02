@@ -1,6 +1,6 @@
-let tapLength = 40;
-let filename = "IntoTheVoid";
-let mapLoadingDelay = 1050;
+let tapLength = 30;
+let filename = "LAMA";
+let mapLoadingDelay = 1037;
 
 let speedup = 1;
 let speedupMult = 1 / speedup;
@@ -27,6 +27,7 @@ var tappingLog = [];
 var pressingLog = [];
 var delayLog = [];
 var pressingErrorLog = [];
+var uniqueID = 0;
 
 function resetValues() {
   delay = 0;
@@ -34,8 +35,9 @@ function resetValues() {
   tappingLog = [];
   pressingLog = [];
   dataIndex = 0;
-  prevHitObject = readNextHitObject();
-  currHitObject = readNextHitObject();
+  uniqueID = 0;
+  prevHitObject = new HitObject(0, 0);
+  currHitObject = new HitObject(0, 0);
 }
 
 function finalizeLogs() {
@@ -49,6 +51,7 @@ function finalizeLogs() {
     pressingErrorLog.push(pressingLog[j] - hitObjLengths[j]);
   }
   */
+  console.log("map data:", dataStr);
   console.log("tappingLog:", tappingLog);
   // console.log("delayLog:", delayLog);
   console.log("pressingLog:", pressingLog);
@@ -85,8 +88,8 @@ function recursiveSetTimeout() {
   let prevLength = prevHitObject.length == 0 ? tapLength : prevHitObject.length;
   let absoluteStart = prevHitObject.start;
   let actualStart = Math.floor(Date.now()) - startTime;
-  let error = actualStart - absoluteStart + 2;
-  relativeStart = Math.max(prevLength, relativeStart - error);
+  let error = actualStart - absoluteStart;
+  relativeStart = currHitObject.start == 0 ? 0 : Math.max(prevLength, relativeStart - error);
   timeouts.push(
     setTimeout(() => {
       let length = currHitObject.length;
@@ -109,7 +112,6 @@ function recursiveSetTimeout() {
   );
 }
 
-var uniqueID = 0;
 function getSignalId() {
   let id = uniqueID;
   uniqueID++;
@@ -141,7 +143,7 @@ function press(ms) {
     sendSignal(false, signalID);
 
     if (logsEnabled) { pressingLog.push(Math.floor(Date.now()) - start); }
-  }, ms - 10));
+  }, ms));
 }
 
 function sendSignal(value, id) {
@@ -154,7 +156,6 @@ function sendSignal(value, id) {
 
 function startPlaying() {
   resetValues();
-  tap();
   recursiveSetTimeout();
 }
 
