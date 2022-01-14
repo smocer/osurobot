@@ -1,3 +1,11 @@
+// Pins on the board
+let solenoidLeft = P7;
+let solenoidRight = P4;
+let xMotorEnable = P10;
+let xMotorDirection = P9;
+let xMotorStep = P8;
+
+// Constants
 let tapLength = 30;
 let filename = "LAMA";
 let mapLoadingDelay = 1037;
@@ -148,9 +156,9 @@ function press(ms) {
 
 function sendSignal(value, id) {
   if (id % 2 == 0) {
-    P4.write(value);
+    solenoidLeft.write(value);
   } else {
-    P7.write(value);
+    solenoidRight.write(value);
   }
 }
 
@@ -162,8 +170,8 @@ function startPlaying() {
 function stopPlaying() {
   timeouts.forEach(t => clearTimeout(t));
   timeouts = [];
-  P4.write(false);
-  P7.write(false);
+  solenoidLeft.write(false);
+  solenoidRight.write(false);
   if (logsEnabled) { finalizeLogs(); }
 }
 
@@ -177,6 +185,28 @@ function toggleSong(isOn) {
   }
 }
 
+function toggleXMotor(isOn) {
+  if (!isOn) {
+    xMotorEnable.write(false);
+    xMotorStep.write(false);
+    return;
+  }
+
+  let delayTime = 10;
+  let steps = 100 * 2;
+  for (var i = 0; i < steps; i++) {
+    if (i % 2 == 0) {
+      setTimeout(() => {
+        xMotorStep.write(true);
+      }, delayTime * i); // on
+    } else {
+      setTimeout(() => {
+        xMotorStep.write(false);
+      }, delayTime * i); // off
+    }
+  }
+}
+
 var myButton = require('@amperka/button')
   .connect(BTN1, {
     holdTime: 1.5
@@ -185,5 +215,6 @@ var myButton = require('@amperka/button')
 myButton.on('click', function() {
   isOn = !isOn;
   LED1.write(isOn);
-  toggleSong(isOn);
+  toggleXMotor(isOn);
+  //toggleSong(isOn);
 });
