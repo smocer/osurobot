@@ -185,15 +185,36 @@ function toggleSong(isOn) {
   }
 }
 
-function toggleXMotor(isOn) {
-  if (!isOn) {
+var motorState = false;
+var cur = 0;
+let maxSteps = 1000;
+
+function recursiveMotor() {
+  let delayTime = 1;
+  if (cur > maxSteps) {
     xMotorEnable.write(false);
     xMotorStep.write(false);
     return;
   }
 
-  let delayTime = 10;
-  let steps = 100 * 2;
+  setTimeout(() => {
+    cur++;
+    motorState = !motorState;
+    xMotorStep.write(motorState);
+    recursiveMotor();
+  }, delayTime);
+}
+
+function toggleXMotor(isOn) {
+  xMotorEnable.write(isOn);
+  if (!isOn) {
+    xMotorStep.write(false);
+    return;
+  }
+
+  cur = 0;
+  recursiveMotor();
+  /*
   for (var i = 0; i < steps; i++) {
     if (i % 2 == 0) {
       setTimeout(() => {
@@ -204,7 +225,7 @@ function toggleXMotor(isOn) {
         xMotorStep.write(false);
       }, delayTime * i); // off
     }
-  }
+  }*/
 }
 
 var myButton = require('@amperka/button')
@@ -215,6 +236,8 @@ var myButton = require('@amperka/button')
 myButton.on('click', function() {
   isOn = !isOn;
   LED1.write(isOn);
+  xMotorEnable.write(isOn);
+  xMotorDirection.write(false); // true false
   toggleXMotor(isOn);
   //toggleSong(isOn);
 });
