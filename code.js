@@ -17,10 +17,18 @@ let logsEnabled = false;
 
 var dataStr = require("Storage").read(filename);
 
-class HitObject {
+class HitObjectPress {
   constructor(start, length) {
     this.start = start;
     this.length = length;
+  }
+}
+
+class HitObjectMove {
+  constructor(start, x, y) {
+    this.start = start;
+    this.x = x;
+    this.y = y;
   }
 }
 
@@ -44,8 +52,8 @@ function resetValues() {
   pressingLog = [];
   dataIndex = 0;
   uniqueID = 0;
-  prevHitObject = new HitObject(0, 0);
-  currHitObject = new HitObject(0, 0);
+  prevHitObject = new HitObjectPress(0, 0);
+  currHitObject = new HitObjectPress(0, 0);
 }
 
 function finalizeLogs() {
@@ -79,7 +87,7 @@ function readNextHitObject() {
     }
   }
 
-  return new HitObject(
+  return new HitObjectPress(
     Number(readUntilComma()) * speedupMult + mapLoadingDelay,
     Number(readUntilComma()) * speedupMult
   );
@@ -185,47 +193,74 @@ function toggleSong(isOn) {
   }
 }
 
-var motorState = false;
-var cur = 0;
 let maxSteps = 1000;
+let testData = [
+	new HitObjectMove(0, 0, 0),
+	new HitObjectMove(1315, -1, 0),
+	new HitObjectMove(2584, 1, 0),
+	new HitObjectMove(3854, 0, 0)
+];
 
-function recursiveMotor() {
-  let delayTime = 1;
-  if (cur > maxSteps) {
-    xMotorEnable.write(false);
+var currentHitObjIdx = 0;
+var moveStartTime = 0;
+var currentX = 0;
+let stepsRatio = 256;
+
+function recursiveMove() {
+	if (currentHitObjIdx == 0) {
+		moveStartTime = Math.floor(Date.now());
+	}
+
+	currentHitObjIdx++;
+	if (currentHitObjIdx > testData.length - 1) {
+		xMotorEnable.write(false);
+		xMotorDirection.write(false);
+		xMotorStep.write(false);
+		return;
+	}
+
+	let delta = testData[currentHitObjIdx].x - currentX;
+	let direction = delta < 0 ? true : false;
+	let distance = Math.min(Math.sqrt(8), Math.abs(delta));
+	let steps = distance * stepsRatio;
+	let deltaTime = testData[currentHitObjIdx].start - testData[currentHitObjIdx - 1].start;
+	xMotorDirection.write(direction);
+	recursiveMotor(steps * 2);
+
+	setTimeout(() => {
+    currentX += delta;
+		recursiveMove();
+	}, Math.max(deltaTime, 0));
+}
+
+var xMotorState = false;
+function recursiveMotor(steps) {
+  if (steps == 0) {
     xMotorStep.write(false);
+	  xMotorState = false;
     return;
   }
 
+  let delayTime = 1;
   setTimeout(() => {
-    cur++;
-    motorState = !motorState;
-    xMotorStep.write(motorState);
-    recursiveMotor();
+    xMotorState = !xMotorState;
+    xMotorStep.write(xMotorState);
+    recursiveMotor(steps - 1);
   }, delayTime);
 }
 
 function toggleXMotor(isOn) {
   xMotorEnable.write(isOn);
+
   if (!isOn) {
+    currentHitObjIdx = 0;
+    xMotorEnable.write(false);
     xMotorStep.write(false);
+    xMotorDirection.write(false);
     return;
   }
 
-  cur = 0;
-  recursiveMotor();
-  /*
-  for (var i = 0; i < steps; i++) {
-    if (i % 2 == 0) {
-      setTimeout(() => {
-        xMotorStep.write(true);
-      }, delayTime * i); // on
-    } else {
-      setTimeout(() => {
-        xMotorStep.write(false);
-      }, delayTime * i); // off
-    }
-  }*/
+  recursiveMove();
 }
 
 var myButton = require('@amperka/button')
@@ -236,8 +271,6 @@ var myButton = require('@amperka/button')
 myButton.on('click', function() {
   isOn = !isOn;
   LED1.write(isOn);
-  xMotorEnable.write(isOn);
-  xMotorDirection.write(false); // true false
   toggleXMotor(isOn);
   //toggleSong(isOn);
 });
